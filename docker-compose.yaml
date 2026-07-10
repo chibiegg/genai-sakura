@@ -132,6 +132,9 @@ services:
       VITE_APP_AUTH_PROVIDER: oidc
       VITE_APP_OIDC_ISSUER: http://localhost:8180/realms/genai
       VITE_APP_OIDC_CLIENT_ID: genai-web
+      # GitHub 直行ログインにする場合は .env に OIDC_IDP_HINT=github を設定
+      # （事前に scripts/setup-github-idp.sh で IdP を登録すること）
+      VITE_APP_OIDC_IDP_HINT: ${OIDC_IDP_HINT:-}
       VITE_APP_API_ENDPOINT: http://localhost:3001/
       VITE_APP_TEAM_ACCESS_CONTROL_API_ENDPOINT: http://localhost:3001/
       VITE_APP_REGION: us-east-1
