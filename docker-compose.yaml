@@ -93,8 +93,8 @@ services:
       AUTH_PROVIDER: oidc
       # iss 検証はブラウザが使う URL、ディスカバリ/JWKS 取得はコンテナ内の URL
       OIDC_ISSUER: ${PUBLIC_KEYCLOAK_URL:-http://localhost:8180}/realms/genai
-      OIDC_INTERNAL_ISSUER: http://keycloak:8180/realms/genai
-      KEYCLOAK_ADMIN_URL: http://keycloak:8180
+      OIDC_INTERNAL_ISSUER: ${INTERNAL_KEYCLOAK_URL:-http://keycloak:8180}/realms/genai
+      KEYCLOAK_ADMIN_URL: ${INTERNAL_KEYCLOAK_URL:-http://keycloak:8180}
       KEYCLOAK_ADMIN_USER: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
       CORS_ORIGINS: ${PUBLIC_WEB_ORIGIN:-http://localhost:5173}
@@ -105,7 +105,7 @@ services:
       SAKURA_AI_API_KEY: ${SAKURA_AI_ENGINE_TOKEN}
       WHISPER_MODEL_ID: whisper-large-v3-turbo
       BUCKET_NAME: genai-files
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: ${PUBLIC_S3_URL:-http://minio:9000}
       AWS_ACCESS_KEY_ID: minioadmin
       AWS_SECRET_ACCESS_KEY: minioadmin
       AWS_REGION: us-east-1
@@ -135,6 +135,8 @@ services:
       # GitHub 直行ログインにする場合は .env に OIDC_IDP_HINT=github を設定
       # （事前に scripts/setup-github-idp.sh で IdP を登録すること）
       VITE_APP_OIDC_IDP_HINT: ${OIDC_IDP_HINT:-}
+      # リバースプロキシ経由で独自ドメインからアクセスする場合の許可ホスト
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-}
       VITE_APP_API_ENDPOINT: ${PUBLIC_API_URL:-http://localhost:3001/}
       VITE_APP_TEAM_ACCESS_CONTROL_API_ENDPOINT: ${PUBLIC_API_URL:-http://localhost:3001/}
       VITE_APP_REGION: us-east-1
