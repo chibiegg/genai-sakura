@@ -167,6 +167,9 @@ services:
       VITE_APP_LOGO_TEXT: ${SITE_LOGO_TEXT:-}
       VITE_APP_LOGO_IMAGE_URL: ${SITE_LOGO_IMAGE_URL:-}
       VITE_APP_COPYRIGHT_TEXT: ${SITE_COPYRIGHT_TEXT:-}
+      # production にすると本番ビルドを配信（公開デモ向け・高速）。
+      # 既定の dev は HMR ありの開発サーバ（ローカル開発向け）。
+      WEB_MODE: ${WEB_MODE:-dev}
     volumes:
       # ロゴ画像等をコミットせずに配信するためのディレクトリ（gitignore 済み）。
       # 例: .local/branding/logo.svg → SITE_LOGO_IMAGE_URL=/branding/logo.svg
