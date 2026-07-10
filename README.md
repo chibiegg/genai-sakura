@@ -207,6 +207,20 @@ Keycloak が GitHub OAuth を仲介するため、コード変更なしで「Git
 
 `.env` の `BRAVE_SEARCH_API_KEY` を空にすると、法令調査AI（lawsy）は Web 検索なし（条文 DB のみ）で動作します。
 
+### ロゴ・コピーライトの差し替え
+
+ヘッダー／フッターの「ここにロゴが入る」「ここにコピーライトが入る」は `.env` で差し替えられます。
+
+```bash
+SITE_TITLE=わたしの源内デモ          # ブラウザタブのタイトル
+SITE_LOGO_TEXT=わたしの源内デモ      # ロゴのテキスト
+SITE_COPYRIGHT_TEXT=© 2026 chibiegg # フッターのコピーライト
+# 画像ロゴを使う場合（.local/branding/ はコミットされずに /branding/ で配信される）
+SITE_LOGO_IMAGE_URL=/branding/logo.svg
+```
+
+画像ファイルは `.local/branding/`（gitignore 済み）に置き、`docker compose up -d web` で反映します。
+
 ## 本番運用に向けた補足
 
 このリポジトリは**ローカル検証用**の構成です。本番では最低限:
