@@ -15,7 +15,7 @@ API="${API:-http://localhost:3001}"
 COMMON_TEAM_ID="00000000-0000-0000-0000-000000000000"
 
 echo "==> Keycloak からトークンを取得..."
-TOKEN=$(curl -s -X POST "$KEYCLOAK/realms/genai/protocol/openid-connect/token" \
+TOKEN=$(curl -s --max-time 15 -X POST "$KEYCLOAK/realms/genai/protocol/openid-connect/token" \
   -d 'grant_type=password&client_id=genai-web&username=dev-user&password=dev-password&scope=openid' \
   | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
 
@@ -24,6 +24,10 @@ if [ -z "$TOKEN" ]; then
   exit 1
 fi
 
+# 既存アプリ一覧（冪等化: 同名アプリが登録済みならスキップ）
+EXISTING=$(curl -s --max-time 15 "$API/teams/$COMMON_TEAM_ID/exapps" \
+  -H "Authorization: Bearer $TOKEN")
+
 register() {
   NAME="$1"
   ENDPOINT="$2"
@@ -31,8 +35,13 @@ register() {
   HOWTO="$4"
   PLACEHOLDER="$5"
 
+  if printf '%s' "$EXISTING" | grep -q "\"exAppName\":\"$NAME\""; then
+    echo "==> 登録済みのためスキップ: $NAME"
+    return 0
+  fi
+
   echo "==> 登録: $NAME ($ENDPOINT)"
-  curl -s -X POST "$API/teams/$COMMON_TEAM_ID/exapps" \
+  curl -s --max-time 30 -X POST "$API/teams/$COMMON_TEAM_ID/exapps" \
     -H "Authorization: Bearer $TOKEN" \
     -H 'Content-Type: application/json' \
     -d "{
