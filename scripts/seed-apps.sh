@@ -8,6 +8,8 @@
 
 set -e
 
+. ./.env 2>/dev/null || true
+
 KEYCLOAK="${KEYCLOAK:-http://localhost:8180}"
 API="${API:-http://localhost:3001}"
 COMMON_TEAM_ID="00000000-0000-0000-0000-000000000000"

@@ -13,6 +13,8 @@
 
 set -e
 
+. ./.env 2>/dev/null || true
+
 KEYCLOAK="${KEYCLOAK:-http://localhost:8180}"
 REALM="${REALM:-genai}"
 KC_ADMIN_USER="${KEYCLOAK_ADMIN_USER:-admin}"
