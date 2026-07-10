@@ -4,6 +4,8 @@
 
 > **注意**: これはデジタル庁とは無関係の**非公式**な派生構成です。ローカル検証を目的としており、公式のサポート・保証はありません。
 
+![チャット画面。さくらのAI Engine のモデル（Qwen3.6 / Kimi K2.6 / Qwen3 Coder / Qwen3 VL / GPT-OSS / LLM-jp / Gemma / Phi-4 など）を選択できる](docs/images/chat-model-selector.png)
+
 ## リポジトリ構成
 
 本リポジトリは起動用の Compose とドキュメントを持ち、本体は submodule として取り込んでいます。
@@ -56,12 +58,14 @@ open http://localhost:5173
 
 | 機能 | オリジナル | 本構成 |
 |---|---|---|
-| テキスト生成 | Amazon Bedrock（Converse API） | さくらのAI Engine（OpenAI 互換 Chat Completions）。`Kimi-K2.6` / `Qwen3.6-35B` / `Qwen3-Coder` |
+| テキスト生成 | Amazon Bedrock（Converse API） | さくらのAI Engine（OpenAI 互換 Chat Completions）。`Kimi-K2.6` / `Qwen3.6` / `Qwen3-Coder` / `Qwen3-VL`（画像入力対応） / `gpt-oss-120b` / `LLM-jp` / `Gemma` / `Phi-4` など |
 | 埋め込み | Bedrock / BigQuery ML / OpenSearch | さくらのAI Engine Embedding API（`multilingual-e5-large`） |
 | ベクトル検索 | Bedrock Knowledge Base + OpenSearch Serverless / BigQuery VECTOR_SEARCH | PostgreSQL + pgvector |
 | Web 検索（法令調査） | Gemini の Google 検索グラウンディング | Brave Search API + ページ本文取得 |
 | 文字起こし | Amazon Transcribe | さくらのAI Engine の Whisper 互換 API（`whisper-large-v3-turbo`） |
 | 画像生成 | Bedrock（Nova Canvas / Stability） | **非対応**（AI Engine に画像生成なし。UI から非表示） |
+
+> **モデルに関する注意**: `preview/` プレフィックスのモデルは**パブリックプレビュー**での提供であり、さくらのAI Engine 側で予告なく追加・変更・提供終了されることがあります。選択肢にあってもその時点で利用できないモデルが含まれる場合は、`docker-compose.yaml` の `MODEL_IDS`（api）と `VITE_APP_MODEL_IDS`(web) から該当モデルを外してください。現在利用可能なモデルの一覧は `GET {SAKURA_AI_ENGINE_BASE_URL}/models` で確認できます。
 
 ### インフラの置き換え
 
