@@ -92,12 +92,12 @@ services:
       DATABASE_URL: postgresql://genai:genai@db:5432/genai
       AUTH_PROVIDER: oidc
       # iss 検証はブラウザが使う URL、ディスカバリ/JWKS 取得はコンテナ内の URL
-      OIDC_ISSUER: http://localhost:8180/realms/genai
+      OIDC_ISSUER: ${PUBLIC_KEYCLOAK_URL:-http://localhost:8180}/realms/genai
       OIDC_INTERNAL_ISSUER: http://keycloak:8180/realms/genai
       KEYCLOAK_ADMIN_URL: http://keycloak:8180
       KEYCLOAK_ADMIN_USER: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-      CORS_ORIGINS: http://localhost:5173
+      CORS_ORIGINS: ${PUBLIC_WEB_ORIGIN:-http://localhost:5173}
       MODEL_PROVIDER: sakura
       MODEL_IDS: '["preview/Qwen3.6-35B-A3B","preview/Kimi-K2.6","Qwen3-Coder-480B-A35B-Instruct-FP8","Qwen3-Coder-30B-A3B-Instruct","preview/Qwen3-VL-30B-A3B-Instruct","gpt-oss-120b","llm-jp-3.1-8x13b-instruct4","preview/gemma-4-31B-it","preview/Phi-4-multimodal-instruct","preview/Phi-4-mini-instruct-cpu","preview/Qwen3-0.6B-cpu"]'
       IMAGE_GENERATION_MODEL_IDS: "[]"
@@ -130,13 +130,13 @@ services:
       - "5173:5173"
     environment:
       VITE_APP_AUTH_PROVIDER: oidc
-      VITE_APP_OIDC_ISSUER: http://localhost:8180/realms/genai
+      VITE_APP_OIDC_ISSUER: ${PUBLIC_KEYCLOAK_URL:-http://localhost:8180}/realms/genai
       VITE_APP_OIDC_CLIENT_ID: genai-web
       # GitHub 直行ログインにする場合は .env に OIDC_IDP_HINT=github を設定
       # （事前に scripts/setup-github-idp.sh で IdP を登録すること）
       VITE_APP_OIDC_IDP_HINT: ${OIDC_IDP_HINT:-}
-      VITE_APP_API_ENDPOINT: http://localhost:3001/
-      VITE_APP_TEAM_ACCESS_CONTROL_API_ENDPOINT: http://localhost:3001/
+      VITE_APP_API_ENDPOINT: ${PUBLIC_API_URL:-http://localhost:3001/}
+      VITE_APP_TEAM_ACCESS_CONTROL_API_ENDPOINT: ${PUBLIC_API_URL:-http://localhost:3001/}
       VITE_APP_REGION: us-east-1
       VITE_APP_SAMLAUTH_ENABLED: "false"
       VITE_APP_MODEL_IDS: '["preview/Qwen3.6-35B-A3B","preview/Kimi-K2.6","Qwen3-Coder-480B-A35B-Instruct-FP8","Qwen3-Coder-30B-A3B-Instruct","preview/Qwen3-VL-30B-A3B-Instruct","gpt-oss-120b","llm-jp-3.1-8x13b-instruct4","preview/gemma-4-31B-it","preview/Phi-4-multimodal-instruct","preview/Phi-4-mini-instruct-cpu","preview/Qwen3-0.6B-cpu"]'
