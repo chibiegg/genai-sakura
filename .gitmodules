@@ -1,0 +1,8 @@
+[submodule "genai-web"]
+	path = genai-web
+	url = git@github.com:chibiegg/genai-web.git
+	branch = sakura-ai-engine
+[submodule "genai-ai-api"]
+	path = genai-ai-api
+	url = git@github.com:chibiegg/genai-ai-api.git
+	branch = sakura-ai-engine

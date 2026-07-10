@@ -1,0 +1,226 @@
+# 源内（さくらのAI Engine 構成）フルスタック起動用 Compose
+#
+# genai-web（Web 本体）と genai-ai-api/sakura（AI アプリ）の両リポジトリを
+# 横断して、AWS 非依存の構成を1コマンドで立ち上げる。
+#
+# 使い方:
+#   1) このディレクトリ（genai-web と genai-ai-api の親）に .env を用意する
+#      （SAKURA_AI_ENGINE_BASE_URL / SAKURA_AI_ENGINE_TOKEN / BRAVE_SEARCH_API_KEY）
+#   2) docker compose up -d --build
+#   3) http://localhost:5173 を開く（dev-user / dev-password）
+#
+# 法令データ（lawsy）・社内文書（qerag）は起動後に投入する（README 参照）。
+
+services:
+  # ---- 源内 Web の永続化層 ----
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: genai
+      POSTGRES_PASSWORD: genai
+      POSTGRES_DB: genai
+    ports:
+      - "5432:5432"
+    volumes:
+      - genai-pgdata:/var/lib/postgresql/data
+      - ./genai-web/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U genai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm", "--http-port=8180"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "8180:8180"
+    volumes:
+      - ./genai-web/docker/keycloak/realm-genai.json:/opt/keycloak/data/import/realm-genai.json:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/localhost/8180 && echo -e 'GET /realms/genai HTTP/1.1\\nhost: localhost\\nConnection: close\\n\\n' >&3 && cat <&3 | grep -q genai",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - genai-minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin &&
+      mc mb --ignore-existing local/genai-files &&
+      exit 0
+      "
+
+  # ---- 源内 Web API サーバ ----
+  api:
+    build:
+      context: ./genai-web
+      dockerfile: packages/server/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: "3001"
+      DATABASE_URL: postgresql://genai:genai@db:5432/genai
+      AUTH_PROVIDER: oidc
+      # iss 検証はブラウザが使う URL、ディスカバリ/JWKS 取得はコンテナ内の URL
+      OIDC_ISSUER: http://localhost:8180/realms/genai
+      OIDC_INTERNAL_ISSUER: http://keycloak:8180/realms/genai
+      KEYCLOAK_ADMIN_URL: http://keycloak:8180
+      KEYCLOAK_ADMIN_USER: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      CORS_ORIGINS: http://localhost:5173
+      MODEL_PROVIDER: sakura
+      MODEL_IDS: '["preview/Kimi-K2.6","preview/Qwen3.6-35B-A3B","Qwen3-Coder-480B-A35B-Instruct-FP8"]'
+      IMAGE_GENERATION_MODEL_IDS: "[]"
+      SAKURA_AI_BASE_URL: ${SAKURA_AI_ENGINE_BASE_URL:-https://api.ai.sakura.ad.jp/v1}
+      SAKURA_AI_API_KEY: ${SAKURA_AI_ENGINE_TOKEN}
+      WHISPER_MODEL_ID: whisper-large-v3-turbo
+      BUCKET_NAME: genai-files
+      S3_ENDPOINT: http://minio:9000
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_REGION: us-east-1
+      USER_IDENTIFIER_HMAC_SECRET: ${USER_IDENTIFIER_HMAC_SECRET:-local-dev-secret-change-me}
+      # AIアプリのエンドポイントがコンテナ内部ホスト名（プライベート）のため許可する
+      EXAPP_ALLOW_PRIVATE_ENDPOINTS: "true"
+      TTL_DAYS: "364"
+    depends_on:
+      db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  # ---- 源内 Web フロントエンド（Vite 開発サーバ） ----
+  web:
+    build:
+      context: ./genai-web
+      dockerfile: packages/web/Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_APP_AUTH_PROVIDER: oidc
+      VITE_APP_OIDC_ISSUER: http://localhost:8180/realms/genai
+      VITE_APP_OIDC_CLIENT_ID: genai-web
+      VITE_APP_API_ENDPOINT: http://localhost:3001/
+      VITE_APP_TEAM_ACCESS_CONTROL_API_ENDPOINT: http://localhost:3001/
+      VITE_APP_REGION: us-east-1
+      VITE_APP_SAMLAUTH_ENABLED: "false"
+      VITE_APP_MODEL_IDS: '["preview/Kimi-K2.6","preview/Qwen3.6-35B-A3B","Qwen3-Coder-480B-A35B-Instruct-FP8"]'
+      VITE_APP_DEFAULT_MODEL_ID: preview/Qwen3.6-35B-A3B
+      VITE_APP_ENDPOINT_NAMES: "[]"
+      VITE_APP_IMAGE_MODEL_IDS: "[]"
+      # 画像生成はさくらのAI Engine 非対応のため非表示
+      VITE_APP_HIDDEN_USE_CASES: '{"image":true}'
+      VITE_APP_GOVAIS_FOR_HOMEPAGE: "[]"
+      VITE_APP_RECENTLY_USED_APPS_ENABLED: "false"
+      # OIDC 構成では未使用だが参照箇所があるためダミー値
+      VITE_APP_USER_POOL_ID: dummy
+      VITE_APP_USER_POOL_CLIENT_ID: dummy
+      VITE_APP_IDENTITY_POOL_ID: dummy
+      VITE_APP_PREDICT_STREAM_FUNCTION_ARN: dummy
+      VITE_APP_SELF_SIGN_UP_ENABLED: "false"
+      VITE_APP_EMAIL_MFA_REQUIRED: "false"
+      VITE_APP_PASSWORD_POLICY: ""
+    depends_on:
+      - api
+
+  # ---- AIアプリ: 法令調査（lawsy） ----
+  lawsy-db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: lawsy
+      POSTGRES_PASSWORD: lawsy
+      POSTGRES_DB: lawsy
+    ports:
+      - "15434:5432"
+    volumes:
+      - lawsy-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lawsy"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  lawsy-api:
+    build:
+      context: ./genai-ai-api/sakura/lawsy-custom/app
+    environment:
+      DATABASE_URL: postgresql://lawsy:lawsy@lawsy-db:5432/lawsy
+      SAKURA_AI_BASE_URL: ${SAKURA_AI_ENGINE_BASE_URL:-https://api.ai.sakura.ad.jp/v1}
+      SAKURA_AI_API_KEY: ${SAKURA_AI_ENGINE_TOKEN}
+      BRAVE_API_KEY: ${BRAVE_SEARCH_API_KEY}
+      MODEL_ID: preview/Kimi-K2.6
+      LIGHT_MODEL_ID: preview/Qwen3.6-35B-A3B
+      EMBEDDING_MODEL_ID: multilingual-e5-large
+    depends_on:
+      lawsy-db:
+        condition: service_healthy
+
+  # ---- AIアプリ: クエリ拡張RAG（qerag） ----
+  qerag-db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: qerag
+      POSTGRES_PASSWORD: qerag
+      POSTGRES_DB: qerag
+    ports:
+      - "15433:5432"
+    volumes:
+      - qerag-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qerag"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  qerag-api:
+    build:
+      context: ./genai-ai-api/sakura/query-expansion-rag/app
+    environment:
+      DATABASE_URL: postgresql://qerag:qerag@qerag-db:5432/qerag
+      SAKURA_AI_BASE_URL: ${SAKURA_AI_ENGINE_BASE_URL:-https://api.ai.sakura.ad.jp/v1}
+      SAKURA_AI_API_KEY: ${SAKURA_AI_ENGINE_TOKEN}
+      EMBEDDING_MODEL_ID: multilingual-e5-large
+      KB_NUM_RESULTS: "5"
+      APP_NAME: qerag
+      APP_PARAM_FILE: qerag.toml
+    depends_on:
+      qerag-db:
+        condition: service_healthy
+
+volumes:
+  genai-pgdata:
+  genai-minio:
+  lawsy-pgdata:
+  qerag-pgdata:
