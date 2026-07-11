@@ -204,9 +204,10 @@ services:
       SAKURA_AI_BASE_URL: ${SAKURA_AI_ENGINE_BASE_URL:-https://api.ai.sakura.ad.jp/v1}
       SAKURA_AI_API_KEY: ${SAKURA_AI_ENGINE_TOKEN}
       BRAVE_API_KEY: ${BRAVE_SEARCH_API_KEY}
-      MODEL_ID: preview/Kimi-K2.6
-      LIGHT_MODEL_ID: preview/Qwen3.6-35B-A3B
-      EMBEDDING_MODEL_ID: multilingual-e5-large
+      # レポート生成モデル / 法令名推定・条文選択の軽量モデル（.env で差し替え可）
+      MODEL_ID: ${LAWSY_MODEL_ID:-preview/Kimi-K2.6}
+      LIGHT_MODEL_ID: ${LAWSY_LIGHT_MODEL_ID:-preview/Qwen3.6-35B-A3B}
+      EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID:-multilingual-e5-large}
     depends_on:
       lawsy-db:
         condition: service_healthy
@@ -237,7 +238,7 @@ services:
       DATABASE_URL: postgresql://qerag:qerag@qerag-db:5432/qerag
       SAKURA_AI_BASE_URL: ${SAKURA_AI_ENGINE_BASE_URL:-https://api.ai.sakura.ad.jp/v1}
       SAKURA_AI_API_KEY: ${SAKURA_AI_ENGINE_TOKEN}
-      EMBEDDING_MODEL_ID: multilingual-e5-large
+      EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID:-multilingual-e5-large}
       KB_NUM_RESULTS: "5"
       APP_NAME: qerag
       APP_PARAM_FILE: qerag.toml
